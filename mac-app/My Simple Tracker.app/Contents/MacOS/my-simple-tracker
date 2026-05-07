@@ -1,0 +1,9 @@
+#!/bin/zsh
+APP_DIR="${0:A:h:h}"
+SCRIPT="$APP_DIR/Resources/my_simple_tracker.py"
+
+if command -v python3 >/dev/null 2>&1; then
+  exec python3 "$SCRIPT"
+fi
+
+osascript -e 'display dialog "Python 3 is required to run My Simple Tracker." buttons {"OK"} default button "OK"'
