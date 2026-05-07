@@ -337,6 +337,14 @@ APP_HTML = r"""<!doctype html>
       margin-bottom: 0;
     }
 
+    .topbar-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
     .theme-control {
       display: flex;
       align-items: center;
@@ -368,6 +376,116 @@ APP_HTML = r"""<!doctype html>
 
     .reset-button:hover {
       border-color: var(--danger);
+    }
+
+    .password-button {
+      min-height: 42px;
+      padding: 0 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--field);
+      color: var(--ink);
+      font-weight: 900;
+    }
+
+    .password-button.active {
+      border-color: var(--accent);
+      box-shadow: inset 0 -3px 0 var(--accent);
+    }
+
+    .pin-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 50;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      background: color-mix(in srgb, var(--bg) 72%, rgba(0, 0, 0, 0.48));
+      backdrop-filter: blur(10px);
+    }
+
+    .pin-overlay.visible {
+      display: flex;
+    }
+
+    .pin-card {
+      width: min(360px, 100%);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      box-shadow: var(--shadow);
+      padding: 20px;
+    }
+
+    .pin-head {
+      display: flex;
+      align-items: start;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .pin-subtitle {
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .pin-dots {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+
+    .pin-dot {
+      width: 14px;
+      height: 14px;
+      border: 2px solid var(--line);
+      border-radius: 99px;
+      background: transparent;
+    }
+
+    .pin-dot.filled {
+      border-color: var(--accent);
+      background: var(--accent);
+    }
+
+    .pin-pad {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+
+    .pin-key {
+      min-height: 54px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--field);
+      color: var(--ink);
+      font-size: 20px;
+      font-weight: 900;
+    }
+
+    .pin-key:hover {
+      border-color: var(--accent);
+      background: color-mix(in srgb, var(--accent) 10%, var(--field));
+    }
+
+    .pin-actions {
+      display: grid;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .pin-message {
+      min-height: 20px;
+      margin: 8px 0 0;
+      color: var(--danger);
+      font-size: 13px;
+      font-weight: 800;
+      text-align: center;
     }
 
     .page-tab {
@@ -926,6 +1044,10 @@ APP_HTML = r"""<!doctype html>
         flex-direction: column;
       }
 
+      .topbar-actions {
+        justify-content: stretch;
+      }
+
       .summary {
         grid-template-columns: repeat(2, minmax(0, 1fr));
       }
@@ -1008,16 +1130,19 @@ APP_HTML = r"""<!doctype html>
           <button class="page-tab active" id="trackerTab" type="button">Tracker</button>
           <button class="page-tab" id="statsTab" type="button">Stats</button>
         </nav>
-        <div class="theme-control">
-          <label for="themeSelect">Theme</label>
-          <select id="themeSelect">
-            <option value="neutral">Neutral</option>
-            <option value="pink">Pink</option>
-            <option value="light_blue">Light blue</option>
-            <option value="dark">Dark</option>
-            <option value="sunrise">Sunrise</option>
-            <option value="twilight">Twilight</option>
-          </select>
+        <div class="topbar-actions">
+          <div class="theme-control">
+            <label for="themeSelect">Theme</label>
+            <select id="themeSelect">
+              <option value="neutral">Neutral</option>
+              <option value="pink">Pink</option>
+              <option value="light_blue">Light blue</option>
+              <option value="dark">Dark</option>
+              <option value="sunrise">Sunrise</option>
+              <option value="twilight">Twilight</option>
+            </select>
+          </div>
+          <button class="password-button" id="passwordButton" type="button">Password</button>
         </div>
       </div>
 
@@ -1051,6 +1176,8 @@ APP_HTML = r"""<!doctype html>
     </main>
     <button class="reset-button" id="resetButton" type="button">Reset</button>
   </div>
+
+  <div class="pin-overlay" id="pinOverlay" aria-modal="true" role="dialog"></div>
 
   <script>
     const storageKey = "goal-tracker-v1";
@@ -1088,6 +1215,10 @@ APP_HTML = r"""<!doctype html>
     let statsGoalIds = [];
     let statsCustomStart = isoDate(new Date(new Date().getFullYear(), new Date().getMonth(), 1));
     let statsCustomEnd = isoDate(new Date());
+    let pinMode = "unlock";
+    let pinBuffer = "";
+    let pinMessage = "";
+    let pendingPin = "";
 
     const goalForm = document.getElementById("goalForm");
     const app = document.getElementById("app");
@@ -1103,7 +1234,9 @@ APP_HTML = r"""<!doctype html>
     const trackerTab = document.getElementById("trackerTab");
     const statsTab = document.getElementById("statsTab");
     const themeSelect = document.getElementById("themeSelect");
+    const passwordButton = document.getElementById("passwordButton");
     const resetButton = document.getElementById("resetButton");
+    const pinOverlay = document.getElementById("pinOverlay");
     const goalColor = document.getElementById("goalColor");
     const goalCadence = document.getElementById("goalCadence");
     const customCadence = document.getElementById("customCadence");
@@ -1155,6 +1288,7 @@ APP_HTML = r"""<!doctype html>
       applyTheme();
       saveState();
     });
+    passwordButton.addEventListener("click", openPasswordSettings);
     resetButton.addEventListener("click", resetTrackerData);
 
     document.getElementById("prevMonth").addEventListener("click", () => {
@@ -1172,6 +1306,7 @@ APP_HTML = r"""<!doctype html>
       if (stored) return normalizeState(JSON.parse(stored));
       return {
         theme: "neutral",
+        security: { pinHash: "" },
         emotions: {},
         goals: [
           {
@@ -1205,6 +1340,7 @@ APP_HTML = r"""<!doctype html>
     function blankState() {
       return {
         theme: "neutral",
+        security: { pinHash: "" },
         emotions: {},
         goals: []
       };
@@ -1213,6 +1349,9 @@ APP_HTML = r"""<!doctype html>
     function normalizeState(savedState) {
       return {
         theme: savedState.theme ?? "neutral",
+        security: {
+          pinHash: savedState.security?.pinHash ?? ""
+        },
         emotions: savedState.emotions ?? {},
         goals: (savedState.goals ?? []).map((goal) => ({
           ...goal,
@@ -1241,10 +1380,197 @@ APP_HTML = r"""<!doctype html>
       localStorage.setItem(storageKey, JSON.stringify(state));
     }
 
+    function passwordIsEnabled() {
+      return Boolean(state.security?.pinHash);
+    }
+
+    function passwordSessionKey() {
+      return `${storageKey}-pin-unlocked`;
+    }
+
+    function passwordIsUnlocked() {
+      return !passwordIsEnabled() || sessionStorage.getItem(passwordSessionKey()) === "true";
+    }
+
+    async function hashPin(pin) {
+      if (!window.crypto?.subtle) return `plain:${pin}`;
+      const data = new TextEncoder().encode(`my-simple-tracker:${pin}`);
+      const digest = await crypto.subtle.digest("SHA-256", data);
+      return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
+    }
+
+    function openPasswordSettings() {
+      if (passwordIsEnabled()) {
+        openPinModal("manage");
+      } else {
+        openPinModal("setup");
+      }
+    }
+
+    function openPinModal(mode, message = "") {
+      pinMode = mode;
+      pinBuffer = "";
+      pinMessage = message;
+      if (mode !== "confirm_setup") pendingPin = "";
+      pinOverlay.classList.add("visible");
+      renderPinModal();
+    }
+
+    function closePinModal() {
+      if (pinMode === "unlock" && !passwordIsUnlocked()) return;
+      pinOverlay.classList.remove("visible");
+      pinBuffer = "";
+      pinMessage = "";
+      pendingPin = "";
+    }
+
+    function renderPinModal() {
+      const locked = pinMode === "unlock";
+      const manage = pinMode === "manage";
+      const title = {
+        unlock: "Enter Password",
+        setup: "Choose Password",
+        confirm_setup: "Confirm Password",
+        manage: "Password"
+      }[pinMode];
+      const subtitle = {
+        unlock: "Enter your 4 digit code to open My Simple Tracker.",
+        setup: "Choose a 4 digit code.",
+        confirm_setup: "Enter the same code again.",
+        manage: passwordIsEnabled() ? "A 4 digit code is active." : "No password is set."
+      }[pinMode];
+
+      pinOverlay.innerHTML = `
+        <section class="pin-card">
+          <div class="pin-head">
+            <div>
+              <h2>${title}</h2>
+              <div class="pin-subtitle">${subtitle}</div>
+            </div>
+            ${locked ? "" : '<button class="ghost" id="pinClose" type="button" title="Close">&times;</button>'}
+          </div>
+          ${manage ? passwordManagementMarkup() : pinEntryMarkup()}
+        </section>
+      `;
+
+      const close = document.getElementById("pinClose");
+      if (close) close.addEventListener("click", closePinModal);
+
+      pinOverlay.querySelectorAll("[data-pin-key]").forEach((button) => {
+        button.addEventListener("click", () => handlePinKey(button.dataset.pinKey));
+      });
+      pinOverlay.querySelectorAll("[data-pin-action]").forEach((button) => {
+        button.addEventListener("click", () => handlePinAction(button.dataset.pinAction));
+      });
+    }
+
+    function passwordManagementMarkup() {
+      return `
+        <div class="pin-actions">
+          <button class="primary" type="button" data-pin-action="change">Change code</button>
+          <button class="ghost" type="button" data-pin-action="disable">Disable password</button>
+        </div>
+        <p class="pin-message">${pinMessage}</p>
+      `;
+    }
+
+    function pinEntryMarkup() {
+      return `
+        <div class="pin-dots" aria-label="${pinBuffer.length} of 4 digits entered">
+          ${[0, 1, 2, 3].map((index) => `<span class="pin-dot ${index < pinBuffer.length ? "filled" : ""}"></span>`).join("")}
+        </div>
+        <div class="pin-pad">
+          ${["1", "2", "3", "4", "5", "6", "7", "8", "9", "back", "0", "clear"].map((key) => `
+            <button class="pin-key" type="button" data-pin-key="${key}">
+              ${key === "back" ? "⌫" : key === "clear" ? "Clear" : key}
+            </button>
+          `).join("")}
+        </div>
+        <p class="pin-message">${pinMessage}</p>
+      `;
+    }
+
+    async function handlePinKey(key) {
+      if (key === "clear") {
+        pinBuffer = "";
+        pinMessage = "";
+        renderPinModal();
+        return;
+      }
+      if (key === "back") {
+        pinBuffer = pinBuffer.slice(0, -1);
+        pinMessage = "";
+        renderPinModal();
+        return;
+      }
+      if (pinBuffer.length >= 4) return;
+      pinBuffer += key;
+      pinMessage = "";
+      if (pinBuffer.length === 4) {
+        await submitPin(pinBuffer);
+        return;
+      }
+      renderPinModal();
+    }
+
+    async function submitPin(pin) {
+      if (pinMode === "unlock") {
+        if (await hashPin(pin) === state.security.pinHash) {
+          sessionStorage.setItem(passwordSessionKey(), "true");
+          closePinModal();
+          render();
+        } else {
+          openPinModal("unlock", "Wrong code. Try again.");
+        }
+        return;
+      }
+
+      if (pinMode === "setup") {
+        pendingPin = pin;
+        openPinModal("confirm_setup");
+        return;
+      }
+
+      if (pinMode === "confirm_setup") {
+        if (pin !== pendingPin) {
+          openPinModal("setup", "Codes did not match. Start again.");
+          return;
+        }
+        state.security = { pinHash: await hashPin(pin) };
+        sessionStorage.setItem(passwordSessionKey(), "true");
+        saveState();
+        closePinModal();
+        render();
+      }
+    }
+
+    function handlePinAction(action) {
+      if (action === "change") {
+        openPinModal("setup");
+        return;
+      }
+      if (action === "disable") {
+        const confirmed = window.confirm("Disable the password for this tracker?");
+        if (!confirmed) return;
+        state.security = { pinHash: "" };
+        sessionStorage.removeItem(passwordSessionKey());
+        saveState();
+        closePinModal();
+        render();
+      }
+    }
+
+    function initPasswordGate() {
+      if (passwordIsEnabled() && !passwordIsUnlocked()) {
+        openPinModal("unlock");
+      }
+    }
+
     function resetTrackerData() {
       const confirmed = window.confirm("Are you sure you want to reset all goals, notes, exceptions, moods, and settings?");
       if (!confirmed) return;
       localStorage.removeItem(storageKey);
+      sessionStorage.removeItem(passwordSessionKey());
       state = blankState();
       selectedGoalId = null;
       selectedDateKey = isoDate(new Date());
@@ -1261,6 +1587,7 @@ APP_HTML = r"""<!doctype html>
     function render() {
       if (!selectedGoalId && state.goals.length) selectedGoalId = state.goals[0].id;
       applyTheme();
+      passwordButton.classList.toggle("active", passwordIsEnabled());
       renderPages();
       renderGoals();
       renderSummary();
@@ -2310,6 +2637,7 @@ APP_HTML = r"""<!doctype html>
     setGoalColor(palette[state.goals.length % palette.length]);
     updateCustomCadence();
     render();
+    initPasswordGate();
   </script>
 </body>
 </html>

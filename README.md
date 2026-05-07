@@ -20,6 +20,7 @@ It runs on your computer and opens in your browser. No account, database, or ext
 - Filter statistics by goal.
 - View charts for trends, completion rates, checks by goal, emotions, and exceptions.
 - Switch between themes: Neutral, Pink, Light blue, Dark, Sunrise, and Twilight.
+- Add an optional 4 digit password lock with a number-pad interface.
 - Reset all local tracker data with confirmation.
 
 ## How It Works
@@ -40,6 +41,7 @@ Your tracker records are stored in your browser's local storage. This includes:
 - exceptions
 - emotional status
 - selected theme
+- optional password setting
 
 Because the data is local browser storage, it is not pushed to GitHub and is not included in the app code.
 
@@ -76,7 +78,7 @@ Important caveats:
 - Clearing browser data can erase your tracker records.
 - A different browser profile will have different saved data.
 - Anyone with access to your computer/browser profile may be able to see the data.
-- The app does not currently encrypt records.
+- The optional password is a local app lock. It helps keep the tracker private during normal use, but it does not encrypt records.
 
 ## Project Structure
 
