@@ -636,6 +636,8 @@ APP_HTML = r"""<!doctype html>
     }
 
     .exception-mark {
+      display: inline-block;
+      box-sizing: border-box;
       width: 10px;
       height: 10px;
       border: 2px solid currentColor;
