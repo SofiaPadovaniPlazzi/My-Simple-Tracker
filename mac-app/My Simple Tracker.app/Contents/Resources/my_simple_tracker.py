@@ -1211,6 +1211,14 @@ APP_HTML = r"""<!doctype html>
       stressed: "Stressed",
       low: "Low"
     };
+    const emotionColors = {
+      energized: "#f6c453",
+      calm: "#7ed6c4",
+      okay: "#9fb7ff",
+      tired: "#c5afff",
+      stressed: "#ff9f8a",
+      low: "#aeb7c2"
+    };
     const emotionIcons = {
       energized: `<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 2.5v2.2M12 19.3v2.2M4.7 4.7l1.6 1.6M17.7 17.7l1.6 1.6M2.5 12h2.2M19.3 12h2.2M4.7 19.3l1.6-1.6M17.7 6.3l1.6-1.6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>`,
       calm: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 18c6.5-.3 11.1-4.8 13.2-12.3C10.8 6.2 5.6 10.5 5 18Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M5 18c3.2-2.8 6.4-4.7 9.8-5.8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>`,
@@ -2180,9 +2188,9 @@ APP_HTML = r"""<!doctype html>
     }
 
     function emotionPie(range) {
-      const slices = Object.entries(emotionTypes).map(([value, label], index) => ({
+      const slices = Object.entries(emotionTypes).map(([value, label]) => ({
         label,
-        color: ["#287c74", "#6d9f71", "#d79d22", "#7a4f95", "#c85d45", "#666a73"][index],
+        color: emotionColors[value],
         value: Object.entries(state.emotions ?? {}).filter(([date, emotion]) => {
           const parsed = parseIso(date);
           return emotion === value && parsed >= range.start && parsed <= range.end;
