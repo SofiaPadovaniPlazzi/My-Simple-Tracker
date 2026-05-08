@@ -1745,7 +1745,8 @@ APP_HTML = r"""<!doctype html>
 
       emotionTracker.querySelectorAll("[data-emotion]").forEach((button) => {
         button.addEventListener("click", () => {
-          saveEmotion(selectedDateKey, button.dataset.emotion);
+          const emotion = button.dataset.emotion;
+          saveEmotion(selectedDateKey, selectedEmotion === emotion ? "" : emotion);
           saveState();
           render();
         });
