@@ -778,6 +778,18 @@ APP_HTML = r"""<!doctype html>
       background: var(--accent);
     }
 
+    .bar.stacked {
+      display: flex;
+      flex-direction: column-reverse;
+      overflow: hidden;
+      background: transparent;
+    }
+
+    .bar-segment {
+      width: 100%;
+      min-height: 3px;
+    }
+
     .bar-label {
       color: var(--muted);
       font-size: 11px;
@@ -2082,18 +2094,36 @@ APP_HTML = r"""<!doctype html>
 
     function trendBars(goals) {
       const buckets = statsBuckets();
-      const items = buckets.map((bucket) => ({
-        ...bucket,
-        count: goals.reduce((sum, goal) => sum + completionsInPeriod(goal, bucket.start, bucket.end), 0)
-      }));
+      const items = buckets.map((bucket) => {
+        const segments = goals.map((goal) => ({
+          goal,
+          count: completionsInPeriod(goal, bucket.start, bucket.end)
+        })).filter((segment) => segment.count > 0);
+        return {
+          ...bucket,
+          segments,
+          count: segments.reduce((sum, segment) => sum + segment.count, 0)
+        };
+      });
       const max = Math.max(1, ...items.map((item) => item.count));
 
-      return items.map((item) => `
-        <div class="bar-wrap">
-          <div class="bar-track"><div class="bar" style="height:${Math.max(4, Math.round((item.count / max) * 100))}%"></div></div>
-          <div class="bar-label">${escapeHtml(item.label)}</div>
-        </div>
-      `).join("");
+      return items.map((item) => {
+        const height = item.count ? Math.max(4, Math.round((item.count / max) * 100)) : 4;
+        const segments = item.segments.map(({ goal, count }) => `
+          <span
+            class="bar-segment"
+            style="height:${Math.round((count / item.count) * 100)}%; background:${goal.color}"
+            title="${escapeHtml(goal.name)}: ${count}"
+          ></span>
+        `).join("");
+
+        return `
+          <div class="bar-wrap">
+            <div class="bar-track"><div class="bar stacked" style="height:${height}%">${segments}</div></div>
+            <div class="bar-label">${escapeHtml(item.label)}</div>
+          </div>
+        `;
+      }).join("");
     }
 
     function goalCompletionBars(goals, range) {
